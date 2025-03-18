@@ -1,146 +1,106 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <title>Mapa OpenStreetMap com Filtro de STATUS</title>
-    <!-- Importar o CSS do Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-    <!-- Importar o JavaScript do Leaflet -->
-    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa com OpenStreetMap e Google Sheets</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     <style>
-        /* Define a altura do mapa */
         #map {
             height: 100%;
-            margin: 0;
-        }
-        .leaflet-control-layers {
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 5px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-        .leaflet-control-layers label {
-            display: block;
-            margin: 5px 0;
-        }
-        .leaflet-control-layers input {
-            margin-right: 5px;
-        }
-        .filter-toggle-button {
-            cursor: pointer;
-            margin-bottom: 2px;
-            padding: 2px;
-            background-color: white;
-            font-size: 20px; /* Aumenta o tamanho do texto */
-            color: white;
-            border: none;
-            border-radius: 3px;
-            text-align: center;
-            transition: background-color 0.3s ease; /* Suaviza a troca de cor ao passar o mouse */
-        }
-        .filter-toggle-button:hover {
-            background-color: #0056b3;
-        }
-        .filter-content {
-            display: none; /* Ocultar o conteúdo inicialmente */
-        }
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
             width: 100%;
-            height: 100%;
-            background-color: rgba(255, 255, 255, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            display: none;
         }
-        .loading-overlay.active {
-            display: flex;
-        }
-        .loading-text {
-            font-size: 18px;
-            color: #007BFF;
-        }
-
-        #coordinate-panel {
-            position: fixed;
-            bottom: 3px;
-            left: 50px;
-            background: white;
-            padding: 1px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            width: 20%;
+        #homeButton {
+            position: absolute;
+            top: 90px;
+            left: 19px;
             z-index: 1000;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
-        }
-        #coordinates-output {
-            width: 100%;
-            height: 30px;
-            resize: none;
-        }
-
-        .legend-control {
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
-        }
-        .legend-control button {
-            cursor: pointer;
-            background-color: #FFFFFF;
-            color: BLACK;
+            background-color: white;
             border: none;
-            padding: 1px 1px;
-            border-radius: 3px;
-            font-size: 14px;
+            padding: 6px;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
-        .legend-content {
-            display: none;
-            margin-top: 10px;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-        .legend-color {
+        #homeButton img {
             width: 20px;
             height: 20px;
-            margin-right: 5px;
-            border: 1px solid #ccc;
+        }
+        /* Estilo da barra de pesquisa */
+        #searchBar {
+            position: absolute;
+            top: 10px;
+            left: 40%;
+            transform: translateX(-40%);
+            z-index: 1000;
+            background-color: white;
+            padding: 5px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        #searchBar input {
+            width: 200px;
+            padding: 5px;
+        }
+        /* Estilo das caixas de pesquisa adicionais */
+        .searchInput {
+            margin-bottom: 10px;
+        }
+        /* Estilo do controle de filtro */
+        .leaflet-control-custom {
+            background-color: white;
+            padding: 0px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: flex; /* Usa o flexbox para centralizar */
+            align-items: center; /* Alinha verticalmente no centro */
+            //justify-content: center; /* Alinha horizontalmente no centro */
+            //text-align: center; /* Alinha o texto no centro (se houver) */
+            padding-top: 5px; /* Espaçamento interno superior */
+            padding-right: 1px; /* Espaçamento interno direito */
+            padding-left: 1px; /* Espaçamento interno esquerdo */
+        }
+
+        /* Estilo do controle de filtro TIPO */
+        .leaflet-control-custom-tipo {
+            background-color: white;
+            padding: 0px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: flex; /* Usa o flexbox para centralizar */
+            align-items: center; /* Alinha verticalmente no centro */
+            //justify-content: center; /* Alinha horizontalmente no centro */
+            //text-align: center; /* Alinha o texto no centro (se houver) */
+            padding-top: 5px; /* Espaçamento interno superior */
+            padding-right: 1px; /* Espaçamento interno direito */
+            padding-left: 1px; /* Espaçamento interno esquerdo */
+        }
+
+        .header {
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .filter-content {
+            display: none;
         }
     </style>
 </head>
 <body>
-    <!-- Div para o mapa -->
     <div id="map"></div>
-
-    <!-- Overlay de carregamento -->
-    <div class="loading-overlay" id="loading-overlay">
-        <span class="loading-text">Carregando dados, por favor aguarde...</span>
-    </div>
-
-    <div id="coordinate-panel">
-        <textarea id="coordinates-output" readonly></textarea>
-        <button onclick="copyCoordinates()">Copiar</button>
-    </div>
-
-
-<div id="location-control" style="position: absolute; top: 10px; left: 10px; z-index: 1000;">
-    <button onclick="toggleLocationTracking()" style="padding: 10px; font-size: 16px; cursor: pointer;">
-        🎯 Ativar Rastreamento
+    <button id="homeButton" title="Voltar para Araçatuba">
+        <img src="https://img.icons8.com/ios-glyphs/30/000000/home.png" alt="Home">
     </button>
-</div>
-
-
-
+    <div id="searchBar">
+        <input type="text" id="searchInput" class="searchInput" placeholder="Pesquisar por descrição...">
+        <input type="text" id="searchBairro" class="searchInput" placeholder="Pesquisar por bairro...">
+        <input type="text" id="searchSetor" class="searchInput" placeholder="Pesquisar por setor...">
+        <input type="number" id="searchQuantidade" class="searchInput" placeholder="Pesquisar por quantidade...">
+    </div>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
     <script>
-        // Coordenadas iniciais e zoom do mapa
         var initialCoordinates = [-21.2076, -50.4401];
         var initialZoom = 13;
 
@@ -191,77 +151,6 @@
             layers: [cartoDBPositron] // Carrega o OpenStreetMap por padrão
         });
 
-
-
-
-  // Variáveis para controle de rastreamento de localização
-    var locationMarker = null;
-    var watchId = null;
-
-    // Função para ativar/desativar o rastreamento de localização
-    function toggleLocationTracking() {
-        if (watchId === null) {
-            // Ativar rastreamento
-            watchId = navigator.geolocation.watchPosition(
-                function(position) {
-                    var userLocation = [position.coords.latitude, position.coords.longitude];
-                    
-                    // Remover o marcador anterior, se existir
-                    if (locationMarker) {
-                        map.removeLayer(locationMarker);
-                    }
-
-                    // Adicionar um novo marcador na localização do usuário
-                    locationMarker = L.marker(userLocation, {
-                        icon: L.icon({
-                            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/images/marker-icon.png',
-                            iconSize: [25, 41],
-                            iconAnchor: [12, 41],
-                            popupAnchor: [1, -34],
-                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/images/marker-shadow.png',
-                            shadowSize: [41, 41]
-                        })
-                    }).addTo(map);
-
-                    // Centralizar o mapa na localização do usuário
-                    map.setView(userLocation, 15);
-
-                    // Atualizar o texto do botão
-                    document.querySelector('#location-control button').innerText = '🎯 Desativar Rastreamento';
-                },
-                function(error) {
-                    alert('Erro ao obter localização: ' + error.message);
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 5000,
-                    maximumAge: 0
-                }
-            );
-        } else {
-            // Desativar rastreamento
-            navigator.geolocation.clearWatch(watchId);
-            watchId = null;
-
-            // Remover o marcador de localização
-            if (locationMarker) {
-                map.removeLayer(locationMarker);
-                locationMarker = null;
-            }
-
-            // Atualizar o texto do botão
-            document.querySelector('#location-control button').innerText = '🎯 Ativar Rastreamento';
-        }
-    }
-
-
-
-
-
-
-
-
-
         // Controle para alternar as camadas de mapa, agora no canto direito inferior
         var baseLayers = {
             "OpenStreetMap": osmLayer,
@@ -274,259 +163,292 @@
 
         L.control.layers(baseLayers, null, { position: 'bottomright' }).addTo(map);
 
-        // URL do Google Sheets exportado como CSV
-        var csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTERpcQ5NONP3R8TGHTbZ04Ckq9Bj31BCQv4SH1eXs_q1v9z-nocOi2jOJEvgE0gVBJ38rxM6KLFRNH/pub?gid=827556270&single=true&output=csv";
+        document.getElementById('homeButton').addEventListener('click', function() {
+            map.setView(initialCoordinates, initialZoom);
+        });
 
-        // Variáveis globais
-        var allPolylines = []; // Armazena todas as polilinhas
-        var allData = []; // Armazena os dados do CSV
-      
-        // Função para definir o estilo da polilinha com base no STATUS
-        function getStyleByStatus(status, tipo) {
-            switch (status.toUpperCase()) {
-                case "EXECUTADO":
-                    return { color: 'GREEN', weight: 4, opacity: 0.5 };
-                case "EM ANDAMENTO":
-                    return { color: 'BLUE', weight: 4, opacity: 0.5 };
-                case "PRÓXIMO":
-                    return { color: 'RED', weight: 4, opacity: 0.5 };
-                case "AGUARDANDO":
-                    return { color: '#C0C0C0', weight: 4, opacity: 0.5 };
-                case "":
-                    return { color: '#C0C0C0', weight: 4, opacity: 0.5 };
-                default:
-                    return { color: 'blue', weight: 4, opacity: 0.5 };
-            }
-        }
+        // Controle de geocodificação
+        var geocoder = L.Control.geocoder({
+            defaultMarkGeocode: false
+        }).on('markgeocode', function(e) {
+            var center = e.geocode.center;
+            L.marker(center).addTo(map)
+                .bindPopup(e.geocode.name)
+                .openPopup();
+            map.setView(center, 20);
+        }).addTo(map);
+
+        var markers = [];
 
 
 
 
+        var csvUrl = 'https://docs.google.com/spreadsheets/d/1c6RXoEomTXUyJcNeHl1dXnm73AR6MR0IJ4D_eqGkSbY/pub?gid=0&single=true&output=csv';
 
-
-        // Função para calcular o comprimento da polilinha (em metros)
-        function calculatePolylineLength(points) {
-            var length = 0;
-            for (var i = 1; i < points.length; i++) {
-                length += map.distance(points[i - 1], points[i]);
-            }
-            return length;
-        }
-
-        // Função para desenhar as polilinhas com base nos dados e filtros
-        function drawPolylines(statusFilters = []) {
-            // Remover polilinhas existentes
-            allPolylines.forEach(polyline => map.removeLayer(polyline));
-            allPolylines = [];
-
-            // Filtrar dados com base nos filtros de status
-            var filteredData = (statusFilters.length === 0)
-                ? allData
-                : allData.filter(row => statusFilters.includes((row.STATUS || "").toUpperCase()));
-
-            var bounds = [];
-
-            filteredData.forEach(row => {
-                if (row.COORDENADAS) {
-                    var polylinePoints = row.COORDENADAS.split(';').map(coord => {
-                        var latLng = coord.split(',');
-                        return latLng.length === 2 ? [parseFloat(latLng[1]), parseFloat(latLng[0])] : null;
-                    }).filter(point => point !== null);
-
-                    if (polylinePoints.length > 0) {
-                        var style = getStyleByStatus(row.STATUS || "", row.TIPO || "");
-                        var polyline = L.polyline(polylinePoints, style).addTo(map);
-                        allPolylines.push(polyline);
-
-                        var length = calculatePolylineLength(polylinePoints);
-
-                        var popupContent = `
-                            <b>NOME:</b> ${row.NOME || 'Não informado'}<br>
-                            <b>STATUS:</b> ${row.STATUS || 'Não informado'}<br>
-                            <b>SETOR:</b> ${row.TIPO || 'Não informado'}<br>
-                            <b>BAIRRO:</b> ${row.OBSERVAÇÃO || 'Não informado'}<br>
-                            <b>ID:</b> ${row.ID || 'Não informado'}<br>
-                            <b></b> ${row.ID ? `<button onclick="updateStatus('${row.ID}', 'EXECUTADO')">Marcar como Executado</button>` : '-'}<br>
-                            <b>COMPRIMENTO:</b> ${(length / 1000).toFixed(2)} km
-                     
-                        `;
-
-
-
-                        polyline.bindPopup(popupContent);
-
-                        bounds = bounds.concat(polylinePoints);
-                    }
-                }
-            });
-
-            if (bounds.length > 0) {
-                map.fitBounds(bounds);
-            }
-        }
-
-        // Função para processar o CSV e inicializar o filtro
-        function processCSV(data) {
-            allData = data;
-
-            var statusValues = [...new Set(data.map(row => row.STATUS).filter(status => status))];
-
-            var control = L.control({ position: 'topright' });
-            control.onAdd = function () {
-                var div = L.DomUtil.create('div', 'leaflet-control-layers');
-
-                var toggleButton = L.DomUtil.create('button', 'filter-toggle-button', div);
-                toggleButton.innerText = "📌";
-
-                var filterContent = L.DomUtil.create('div', 'filter-content', div);
-
-                toggleButton.addEventListener('click', function () {
-                    filterContent.style.display = filterContent.style.display === "none" ? "block" : "none";
-                });
-
-                filterContent.innerHTML = '<strong>Filtrar por STATUS:</strong>';
-                statusValues.forEach(status => {
-                    var label = L.DomUtil.create('label', '', filterContent);
-                    var checkbox = L.DomUtil.create('input', '', label);
-                    checkbox.type = 'checkbox';
-                    checkbox.value = status.toUpperCase();
-                    checkbox.checked = true;
-                    label.appendChild(document.createTextNode(' ' + status));
-
-                    checkbox.addEventListener('change', function () {
-                        var selectedStatuses = Array.from(filterContent.querySelectorAll('input:checked'))
-                            .map(input => input.value);
-                        drawPolylines(selectedStatuses);
-                    });
-                });
-
-                return div;
-            };
-
-            control.addTo(map);
-            drawPolylines();
-        }
-
-        // Mostrar overlay de carregamento
-        document.getElementById('loading-overlay').classList.add('active');
-
-        // Processar o CSV
         Papa.parse(csvUrl, {
             download: true,
             header: true,
             complete: function(results) {
-                document.getElementById('loading-overlay').classList.remove('active');
-                if (!results.data || results.errors.length > 0) {
-                    alert("Erro ao processar o CSV. Verifique o arquivo.");
-                    console.error("Erros no CSV:", results.errors);
-                } else {
-                    processCSV(results.data);
+                results.data.forEach(function(row) {
+                    var latitude = parseFloat(row['LATITUDE']);
+                    var longitude = parseFloat(row['LONGITUDE']);
+                    var descricao = row['DESCRIÇÃO'];
+                    var status = row['STATUS'];
+                    var dados = row['DADOS'];
+                    var bairro = row['BAIRRO'];
+                    var setor = row['SETOR'];
+                    var quantidade = row['QUANTIDADE'];
+                    var tipo = row['TIPO'];
+                    var custo = row['CUSTO'];
+
+                    // Definir ícones baseados no status
+                    var iconColor;
+                    var sizeIcon;
+                    switch (status) {
+                        case 'INSTALADO':
+                            if(tipo === 'SELETIVA'){
+                            iconColor = 'https://i.postimg.cc/13VRV7S2/contanier-reciclavel-transparentwe.png';
+                            sizeIcon = 26;
+                            } else{ 
+                            iconColor = 'https://i.postimg.cc/mgfJVmM0/Ixon-lixo-org-removebg-preview.png';
+                            sizeIcon = 32;
+                            }
+                            break;
+                        case 'ESTUDO':
+                            iconColor = 'http://maps.google.com/mapfiles/kml/paddle/orange-circle.png';
+                            sizeIcon = 22;
+                            break;
+                        case 'AUSENTE':
+                            iconColor = 'https://user-images.githubusercontent.com/1673310/171033975-680736c9-60f1-4af8-841f-65ebfb574881.gif';
+                            sizeIcon = 32;
+                            break;
+                        case 'INTRODUZIR':
+                            iconColor = 'http://maps.google.com/mapfiles/kml/paddle/blu-circle.png';
+                            sizeIcon = 32;
+                            break;
+                        case 'REMOVER':
+                            iconColor = 'http://maps.google.com/mapfiles/kml/paddle/pause-lv.png';
+                            sizeIcon = 10;
+                            break;
+                        case 'DESINSTALADO':
+                            iconColor = 'http://maps.google.com/mapfiles/kml/pal5/icon51l.png';
+                            sizeIcon = 10;
+                            break;
+                        default:
+                            iconColor = 'http://maps.google.com/mapfiles/kml/paddle/wht-circle.png';
+                            sizeIcon = 20;
+                    }
+
+                    var customIcon = L.icon({
+                        iconUrl: iconColor,
+                        iconSize: [sizeIcon, sizeIcon],
+                        iconAnchor: [sizeIcon / 2, sizeIcon],
+                        popupAnchor: [0, -sizeIcon]
+                    });
+
+                    if (!isNaN(latitude) && !isNaN(longitude)) {
+                        var popupContent = `<strong style="color: red;">${tipo}</strong><br>
+                                            <strong>Descrição:</strong> ${descricao}<br>
+                                            <strong>Status:</strong> ${status || 'Não especificado'}<br>
+                                            <strong>Dados:</strong> ${dados || 'Não especificado'}<br>
+                                            <strong>Bairro:</strong> ${bairro || 'Não especificado'}<br>
+                                            <strong>Setor:</strong> ${setor || 'Não especificado'}<br>
+                                            <strong>Custo:</strong> ${custo || 'Não especificado'}<br>
+                                            <strong>Quantidade:</strong> ${quantidade || 'Não especificado'}`;
+                        var marker = L.marker([latitude, longitude], { icon: customIcon }).bindPopup(popupContent);
+
+                        // Atribuir o status como uma propriedade ao marcador
+                        marker.status = status;
+                        marker.tipo = tipo; // Adicionado aqui
+                        markers.push(marker);
+                    }
+                });
+
+                var markerLayer = L.layerGroup(markers);
+                markerLayer.addTo(map);
+
+
+// Adicionar evento para escutar o movimento do mapa (moveend ou zoomend)
+map.on('moveend', updateVisibleMarkers);
+
+// Função para atualizar os marcadores visíveis com base nos limites do mapa
+function updateVisibleMarkers() {
+    var bounds = map.getBounds(); // Obter a área visível do mapa
+    markerLayer.clearLayers(); // Limpar marcadores atuais
+
+    // Obter os filtros
+    var descriptionFilter = document.getElementById('searchInput').value.toLowerCase();
+    var bairroFilter = document.getElementById('searchBairro').value.toLowerCase();
+    var setorFilter = document.getElementById('searchSetor').value.toLowerCase();
+    var quantidadeFilter = document.getElementById('searchQuantidade').value;
+
+    // Array para armazenar marcadores visíveis
+    var visibleMarkers = [];
+
+    // Percorrer todos os marcadores e adicionar ao array os visíveis
+    markers.forEach(function(marker) {
+        if (bounds.contains(marker.getLatLng())) {
+            // Verificar se o marcador passa pelos filtros
+            var popupContent = marker.getPopup().getContent().toLowerCase();
+            var matchesDescription = popupContent.includes(descriptionFilter);
+            var matchesBairro = popupContent.includes(bairroFilter);
+            var matchesSetor = popupContent.includes(setorFilter);
+            var matchesQuantidade = !quantidadeFilter || popupContent.includes(quantidadeFilter);
+
+            // Verificar se o status do marcador está nos statuses selecionados
+            var checkedStatuses = Array.from(document.querySelectorAll('.filter-content input[type="checkbox"]:checked'))
+                .map(function(checkbox) {
+                    return checkbox.value;
+                });
+            var matchesStatus = checkedStatuses.includes(marker.status) || checkedStatuses.length === 0;
+
+
+            // Verificar se o status do marcador está nos statusesTipo selecionados
+            var checkedStatusesTipo = Array.from(document.querySelectorAll('.filter-content input[type="checkbox"]:checked'))
+                .map(function(checkbox) {
+                    return checkbox.value;
+                });
+            var matchesStatusTipo = checkedStatusesTipo.includes(marker.tipo) || checkedStatusesTipo.length === 0;
+
+            if (matchesDescription && matchesBairro && matchesSetor && matchesQuantidade && matchesStatus  && matchesStatusTipo) {
+                visibleMarkers.push(marker);
+            }
+        }
+    });
+
+    // Limitar a 200 marcadores
+    var markersToDisplay = visibleMarkers.slice(0, 200);
+
+    // Adicionar ao mapa apenas os marcadores limitados
+    markersToDisplay.forEach(function(marker) {
+        markerLayer.addLayer(marker);
+    });
+}
+
+// Atualiza os marcadores visíveis inicialmente
+updateVisibleMarkers();
+
+
+                function filterMarkers() {
+                    var descriptionFilter = document.getElementById('searchInput').value.toLowerCase();
+                    var bairroFilter = document.getElementById('searchBairro').value.toLowerCase();
+                    var setorFilter = document.getElementById('searchSetor').value.toLowerCase();
+                    var quantidadeFilter = document.getElementById('searchQuantidade').value;
+
+                    // Obtém os statuses selecionados no controle de filtro
+                    var checkedStatuses = Array.from(document.querySelectorAll('.filter-content input[type="checkbox"]:checked'))
+                        .map(function(checkbox) {
+                            return checkbox.value;
+                        });
+
+                    // Obtém os statusesTipo selecionados no controle de filtro
+                    var checkedStatusesTipo = Array.from(document.querySelectorAll('.filter-content input[type="checkbox"]:checked'))
+                        .map(function(checkbox) {
+                            return checkbox.value;
+                        });
+
+
+                    markerLayer.clearLayers();
+
+                    markers.forEach(function(marker) {
+                        var popupContent = marker.getPopup().getContent().toLowerCase();
+                        var matchesDescription = popupContent.includes(descriptionFilter);
+                        var matchesBairro = popupContent.includes(bairroFilter);
+                        var matchesSetor = popupContent.includes(setorFilter);
+                        var matchesQuantidade = !quantidadeFilter || popupContent.includes(quantidadeFilter);
+
+                        // Verifica se o status do marcador está nos statuses selecionados
+                        var matchesStatus = checkedStatuses.includes(marker.status);
+
+                        // Verifica se o status do marcador está nos statusesTipo selecionados
+                        var matchesStatusTipo = checkedStatusesTipo.includes(marker.tipo);
+
+                        if (matchesDescription && matchesBairro && matchesSetor && matchesQuantidade && matchesStatus  && matchesStatusTipo) {
+                            markerLayer.addLayer(marker);
+                        }
+                    });
                 }
-            },
-            error: function(error) {
-                document.getElementById('loading-overlay').classList.remove('active');
-                alert("Erro ao carregar o CSV: " + error.message);
-                console.error(error);
+
+                // Atualiza a exibição dos marcadores quando os campos de pesquisa são alterados
+                document.getElementById('searchInput').addEventListener('input', filterMarkers);
+                document.getElementById('searchBairro').addEventListener('input', filterMarkers);
+                document.getElementById('searchSetor').addEventListener('input', filterMarkers);
+                document.getElementById('searchQuantidade').addEventListener('input', filterMarkers);
+                document.querySelectorAll('.filter-content input[type="checkbox"]').forEach(function(checkbox) {
+                    checkbox.addEventListener('change', filterMarkers);
+                });
             }
         });
 
-        // Adicionar botão de desenho de polilinha
-        var drawControl = L.control({ position: 'topleft' });
-        drawControl.onAdd = function () {
-            var div = L.DomUtil.create('div', 'leaflet-control-layers');
-            var drawButton = L.DomUtil.create('button', 'filter-toggle-button', div);
-            drawButton.innerText = "✏️";
-            drawButton.title = "Desenhar Polilinha";
-            return div;
-        };
-        drawControl.addTo(map);
-
-        // Variáveis para o modo de desenho
-        var drawingMode = false;
-        var tempPolyline = null;
-        var tempPoints = [];
-        var firstClickIgnored = false; // Nova variável para controlar o primeiro clique
-
-        // Função para ativar/desativar o modo de desenho
-        function toggleDrawingMode() {
-            drawingMode = !drawingMode;
-            if (drawingMode) {
-                tempPoints = [];
-                tempPolyline = null;
-                firstClickIgnored = false; // Reseta o controle do primeiro clique
-                map.on('click', addPointToPolyline);
-            } else {
-                map.off('click', addPointToPolyline);
-                if (tempPolyline) {
-                    map.removeLayer(tempPolyline);
-                }
-                if (tempPoints.length = 1) {
-                    var coordinates = tempPoints.map(point => point.lat + ',' + point.lng).join(';');
-                    // Exibir as coordenadas em um popup
-                    L.popup()
-                        .setLatLng(initialCoordinates)
-                        .setContent("Coordenadas da polilinha")
-                        .openOn(map);
-                }
+        // Criando o controle de filtro de STATUS
+        var StatusFilterControl = L.Control.extend({
+            options: {
+                position: 'topright'
+            },
+            onAdd: function (map) {
+                var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+                var header = L.DomUtil.create('div', 'header', container);
+                header.innerHTML = "<strong>Status</strong>";
+                
+                var filterContent = L.DomUtil.create('div', 'filter-content', container);
+                filterContent.innerHTML = `
+                    <label><input type="checkbox" value="INSTALADO" checked> INSTALADO</label><br>
+                    <label><input type="checkbox" value="ESTUDO" > ESTUDO</label><br>
+                    <label><input type="checkbox" value="AUSENTE" checked> AUSENTE</label><br>
+                    <label><input type="checkbox" value="INTRODUZIR" checked> INTRODUZIR</label><br>
+                    <label><input type="checkbox" value="REMOVER" checked> REMOVER</label><br>
+                    <label><input type="checkbox" value="DESINSTALADO" checked> DESINSTALADO</label><br>
+                    <label><input type="checkbox" value="NULO" checked> STATUS NULO</label>
+                `;
+                
+                filterContent.style.display = 'none';
+                
+                header.addEventListener('click', function() {
+                    filterContent.style.display = filterContent.style.display === 'none' ? 'block' : 'none';
+                });
+                
+                L.DomEvent.disableClickPropagation(container);
+                return container;
             }
-        }
+        });
 
-        // Função para adicionar um ponto à polilinha temporária
-        function addPointToPolyline(e) {
-            if (!firstClickIgnored) {
-                firstClickIgnored = true; // Ignora o primeiro clique
-                return;
+        // Adiciona o controle de filtro ao mapa
+        map.addControl(new StatusFilterControl());
+
+
+        // Criando o controle de filtro de TIPO
+        var TipoFilterControl = L.Control.extend({
+            options: {
+                position: 'topright'
+            },
+            onAdd: function (map) {
+                var container2 = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom-tipo');
+                var header = L.DomUtil.create('div', 'header', container2);
+                header.innerHTML = "<strong>Tipo</strong>";
+                
+                var filterContent = L.DomUtil.create('div', 'filter-content', container2);
+                filterContent.innerHTML = `
+                    <label><input type="checkbox" value="DOMICILIAR" checked> DOMICILIAR</label><br>
+                    <label><input type="checkbox" value="SELETIVA" checked> SELETIVA</label><br>
+                    <label><input type="checkbox" value="NULO" checked> STATUS NULO</label>
+                `;
+                
+                filterContent.style.display = 'none';
+                
+                header.addEventListener('click', function() {
+                    filterContent.style.display = filterContent.style.display === 'none' ? 'block' : 'none';
+                });
+                
+                L.DomEvent.disableClickPropagation(container2);
+                return container2;
             }
-            tempPoints.push(e.latlng);
-            if (tempPolyline) {
-                map.removeLayer(tempPolyline);
-            }
-            tempPolyline = L.polyline(tempPoints, { color: 'black', weight: 4, opacity: 0.5 }).addTo(map);
-            var coordinates = tempPoints.map(point => point.lat + ',' + point.lng).join(';');
-            // Atualizar o painel com as coordenadas
-            document.getElementById('coordinates-output').value = coordinates
+        });
 
-            // Cria pop-up 
-            if(1==0){
-                L.popup()
-                .setLatLng(initialCoordinates)
-                .setContent("Coordenadas da polilinha:<br>" + coordinates)
-                .openOn(map);
-            }
-        }
+        // Adiciona o controle de filtro ao mapa
+        map.addControl(new TipoFilterControl());
 
-        // Associar o botão de desenho à função de alternar o modo de desenho
-        document.querySelector('.leaflet-control-layers button').addEventListener('click', toggleDrawingMode);
 
-        // Função para copiar coordenadas para a área de transferência
-        function copyCoordinates() {
-            var textArea = document.getElementById('coordinates-output');
-            textArea.select();
-            document.execCommand("copy");
-        }
 
-        // Adicionar controle de legenda
-        var legendControl = L.control({ position: 'topleft' });
-        legendControl.onAdd = function () {
-            var div = L.DomUtil.create('div', 'legend-control');
-            var toggleButton = L.DomUtil.create('button', '', div);
-            toggleButton.innerText = "LEGENDA";
-            toggleButton.addEventListener('click', function () {
-                var legendContent = div.querySelector('.legend-content');
-                legendContent.style.display = legendContent.style.display === "none" ? "block" : "none";
-            });
-
-            var legendContent = L.DomUtil.create('div', 'legend-content', div);
-            legendContent.innerHTML = `
-                <div class="legend-item"><div class="legend-color" style="background-color: GREEN;"></div>EXECUTADO</div>
-                <div class="legend-item"><div class="legend-color" style="background-color: BLUE;"></div>EM ANDAMENTO</div>
-                <div class="legend-item"><div class="legend-color" style="background-color: RED;"></div>PRÓXIMO</div>
-                <div class="legend-item"><div class="legend-color" style="background-color: #C0C0C0;"></div>AGUARDANDO</div>
-            `;
-
-            return div;
-        };
-        legendControl.addTo(map);
     </script>
 </body>
 </html>
