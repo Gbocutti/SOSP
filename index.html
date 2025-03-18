@@ -133,7 +133,7 @@
 
 <div id="location-control" style="position: absolute; top: 10px; left: 10px; z-index: 1000;">
     <button onclick="toggleLocationTracking()" style="padding: 10px; font-size: 16px; cursor: pointer;">
-        ?? Ativar Rastreamento
+        🎯 Ativar Rastreamento
     </button>
 </div>
 
@@ -227,7 +227,7 @@
                     map.setView(userLocation, 15);
 
                     // Atualizar o texto do botão
-                    document.querySelector('#location-control button').innerText = '?? Desativar Rastreamento';
+                    document.querySelector('#location-control button').innerText = '🎯 Desativar Rastreamento';
                 },
                 function(error) {
                     alert('Erro ao obter localização: ' + error.message);
@@ -250,7 +250,7 @@
             }
 
             // Atualizar o texto do botão
-            document.querySelector('#location-control button').innerText = '?? Ativar Rastreamento';
+            document.querySelector('#location-control button').innerText = '🎯 Ativar Rastreamento';
         }
     }
 
@@ -376,7 +376,7 @@
                 var div = L.DomUtil.create('div', 'leaflet-control-layers');
 
                 var toggleButton = L.DomUtil.create('button', 'filter-toggle-button', div);
-                toggleButton.innerText = "??";
+                toggleButton.innerText = "📌";
 
                 var filterContent = L.DomUtil.create('div', 'filter-content', div);
 
@@ -435,7 +435,7 @@
         drawControl.onAdd = function () {
             var div = L.DomUtil.create('div', 'leaflet-control-layers');
             var drawButton = L.DomUtil.create('button', 'filter-toggle-button', div);
-            drawButton.innerText = "??";
+            drawButton.innerText = "✏️";
             drawButton.title = "Desenhar Polilinha";
             return div;
         };
