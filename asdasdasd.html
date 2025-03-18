@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mapa OpenStreetMap com Filtro de STATUS</title>
+    <!-- Importar o CSS do Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <!-- Importar o JavaScript do Leaflet -->
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <style>
+        /* Define a altura do mapa */
+        #map {
+            height: 100%;
+            margin: 0;
+        }
+        .leaflet-control-layers {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .leaflet-control-layers label {
+            display: block;
+            margin: 5px 0;
+        }
+        .leaflet-control-layers input {
+            margin-right: 5px;
+        }
+        .filter-toggle-button {
+            cursor: pointer;
+            margin-bottom: 2px;
+            padding: 2px;
+            background-color: white;
+            font-size: 20px; /* Aumenta o tamanho do texto */
+            color: white;
+            border: none;
+            border-radius: 3px;
+            text-align: center;
+            transition: background-color 0.3s ease; /* Suaviza a troca de cor ao passar o mouse */
+        }
+        .filter-toggle-button:hover {
+            background-color: #0056b3;
+        }
+        .filter-content {
+            display: none; /* Ocultar o conteúdo inicialmente */
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            display: none;
+        }
+        .loading-overlay.active {
+            display: flex;
+        }
+        .loading-text {
+            font-size: 18px;
+            color: #007BFF;
+        }
+
+        #coordinate-panel {
+            position: fixed;
+            bottom: 3px;
+            left: 50px;
+            background: white;
+            padding: 1px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 20%;
+            z-index: 1000;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+        }
+        #coordinates-output {
+            width: 100%;
+            height: 30px;
+            resize: none;
+        }
+
+        .legend-control {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+        }
+        .legend-control button {
+            cursor: pointer;
+            background-color: #FFFFFF;
+            color: BLACK;
+            border: none;
+            padding: 1px 1px;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        .legend-content {
+            display: none;
+            margin-top: 10px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <!-- Div para o mapa -->
+    <div id="map"></div>
+
+    <!-- Overlay de carregamento -->
+    <div class="loading-overlay" id="loading-overlay">
+        <span class="loading-text">Carregando dados, por favor aguarde...</span>
+    </div>
+
+    <div id="coordinate-panel">
+        <textarea id="coordinates-output" readonly></textarea>
+        <button onclick="copyCoordinates()">Copiar</button>
+    </div>
+
+
+<div id="location-control" style="position: absolute; top: 10px; left: 10px; z-index: 1000;">
+    <button onclick="toggleLocationTracking()" style="padding: 10px; font-size: 16px; cursor: pointer;">
+        ?? Ativar Rastreamento
+    </button>
+</div>
+
+
+
+    <script>
+        // Coordenadas iniciais e zoom do mapa
+        var initialCoordinates = [-21.2076, -50.4401];
+        var initialZoom = 13;
+
+        // Criando os layers de mapa base (OpenStreetMap e Satélite)
+        var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 25,
+            attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+        });
+
+        var cartoDBPositron = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        });
+
+        var cartoDBDarkMatter = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        });
+
+        var stamenToner = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/USA_Topo_Maps/MapServer/tile/{z}/{y}/{x}', {
+           maxZoom: 20,
+           attribution: 'Tiles © Esri'
+        });
+
+        var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles © Esri'
+        });
+
+        var esriTopographic = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 20,
+            attribution: 'Tiles © Esri & OpenStreetMap contributors'
+        });
+
+        var arcgisDark1 = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 35,
+            attribution: 'Tiles © Esri'
+        });
+
+        var estradas = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 35,
+            attribution: 'Tiles © Esri'
+        });
+
+        var map = L.map('map', {
+            center: initialCoordinates,
+            zoom: initialZoom,
+            layers: [cartoDBPositron] // Carrega o OpenStreetMap por padrão
+        });
+
+
+
+
+  // Variáveis para controle de rastreamento de localização
+    var locationMarker = null;
+    var watchId = null;
+
+    // Função para ativar/desativar o rastreamento de localização
+    function toggleLocationTracking() {
+        if (watchId === null) {
+            // Ativar rastreamento
+            watchId = navigator.geolocation.watchPosition(
+                function(position) {
+                    var userLocation = [position.coords.latitude, position.coords.longitude];
+                    
+                    // Remover o marcador anterior, se existir
+                    if (locationMarker) {
+                        map.removeLayer(locationMarker);
+                    }
+
+                    // Adicionar um novo marcador na localização do usuário
+                    locationMarker = L.marker(userLocation, {
+                        icon: L.icon({
+                            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/images/marker-icon.png',
+                            iconSize: [25, 41],
+                            iconAnchor: [12, 41],
+                            popupAnchor: [1, -34],
+                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/images/marker-shadow.png',
+                            shadowSize: [41, 41]
+                        })
+                    }).addTo(map);
+
+                    // Centralizar o mapa na localização do usuário
+                    map.setView(userLocation, 15);
+
+                    // Atualizar o texto do botão
+                    document.querySelector('#location-control button').innerText = '?? Desativar Rastreamento';
+                },
+                function(error) {
+                    alert('Erro ao obter localização: ' + error.message);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
+                }
+            );
+        } else {
+            // Desativar rastreamento
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+
+            // Remover o marcador de localização
+            if (locationMarker) {
+                map.removeLayer(locationMarker);
+                locationMarker = null;
+            }
+
+            // Atualizar o texto do botão
+            document.querySelector('#location-control button').innerText = '?? Ativar Rastreamento';
+        }
+    }
+
+
+
+
+
+
+
+
+
+        // Controle para alternar as camadas de mapa, agora no canto direito inferior
+        var baseLayers = {
+            "OpenStreetMap": osmLayer,
+            "Satélite": satelliteLayer,
+            "Topografia": esriTopographic,
+            "Carto": cartoDBPositron,
+            "Escuro": cartoDBDarkMatter,
+            "Estradas": estradas
+        };
+
+        L.control.layers(baseLayers, null, { position: 'bottomright' }).addTo(map);
+
+        // URL do Google Sheets exportado como CSV
+        var csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTERpcQ5NONP3R8TGHTbZ04Ckq9Bj31BCQv4SH1eXs_q1v9z-nocOi2jOJEvgE0gVBJ38rxM6KLFRNH/pub?gid=827556270&single=true&output=csv";
+
+        // Variáveis globais
+        var allPolylines = []; // Armazena todas as polilinhas
+        var allData = []; // Armazena os dados do CSV
+      
+        // Função para definir o estilo da polilinha com base no STATUS
+        function getStyleByStatus(status, tipo) {
+            switch (status.toUpperCase()) {
+                case "EXECUTADO":
+                    return { color: 'GREEN', weight: 4, opacity: 0.5 };
+                case "EM ANDAMENTO":
+                    return { color: 'BLUE', weight: 4, opacity: 0.5 };
+                case "PRÓXIMO":
+                    return { color: 'RED', weight: 4, opacity: 0.5 };
+                case "AGUARDANDO":
+                    return { color: '#C0C0C0', weight: 4, opacity: 0.5 };
+                case "":
+                    return { color: '#C0C0C0', weight: 4, opacity: 0.5 };
+                default:
+                    return { color: 'blue', weight: 4, opacity: 0.5 };
+            }
+        }
+
+
+
+
+
+
+        // Função para calcular o comprimento da polilinha (em metros)
+        function calculatePolylineLength(points) {
+            var length = 0;
+            for (var i = 1; i < points.length; i++) {
+                length += map.distance(points[i - 1], points[i]);
+            }
+            return length;
+        }
+
+        // Função para desenhar as polilinhas com base nos dados e filtros
+        function drawPolylines(statusFilters = []) {
+            // Remover polilinhas existentes
+            allPolylines.forEach(polyline => map.removeLayer(polyline));
+            allPolylines = [];
+
+            // Filtrar dados com base nos filtros de status
+            var filteredData = (statusFilters.length === 0)
+                ? allData
+                : allData.filter(row => statusFilters.includes((row.STATUS || "").toUpperCase()));
+
+            var bounds = [];
+
+            filteredData.forEach(row => {
+                if (row.COORDENADAS) {
+                    var polylinePoints = row.COORDENADAS.split(';').map(coord => {
+                        var latLng = coord.split(',');
+                        return latLng.length === 2 ? [parseFloat(latLng[1]), parseFloat(latLng[0])] : null;
+                    }).filter(point => point !== null);
+
+                    if (polylinePoints.length > 0) {
+                        var style = getStyleByStatus(row.STATUS || "", row.TIPO || "");
+                        var polyline = L.polyline(polylinePoints, style).addTo(map);
+                        allPolylines.push(polyline);
+
+                        var length = calculatePolylineLength(polylinePoints);
+
+                        var popupContent = `
+                            <b>NOME:</b> ${row.NOME || 'Não informado'}<br>
+                            <b>STATUS:</b> ${row.STATUS || 'Não informado'}<br>
+                            <b>SETOR:</b> ${row.TIPO || 'Não informado'}<br>
+                            <b>BAIRRO:</b> ${row.OBSERVAÇÃO || 'Não informado'}<br>
+                            <b>ID:</b> ${row.ID || 'Não informado'}<br>
+                            <b></b> ${row.ID ? `<button onclick="updateStatus('${row.ID}', 'EXECUTADO')">Marcar como Executado</button>` : '-'}<br>
+                            <b>COMPRIMENTO:</b> ${(length / 1000).toFixed(2)} km
+                     
+                        `;
+
+
+
+                        polyline.bindPopup(popupContent);
+
+                        bounds = bounds.concat(polylinePoints);
+                    }
+                }
+            });
+
+            if (bounds.length > 0) {
+                map.fitBounds(bounds);
+            }
+        }
+
+        // Função para processar o CSV e inicializar o filtro
+        function processCSV(data) {
+            allData = data;
+
+            var statusValues = [...new Set(data.map(row => row.STATUS).filter(status => status))];
+
+            var control = L.control({ position: 'topright' });
+            control.onAdd = function () {
+                var div = L.DomUtil.create('div', 'leaflet-control-layers');
+
+                var toggleButton = L.DomUtil.create('button', 'filter-toggle-button', div);
+                toggleButton.innerText = "??";
+
+                var filterContent = L.DomUtil.create('div', 'filter-content', div);
+
+                toggleButton.addEventListener('click', function () {
+                    filterContent.style.display = filterContent.style.display === "none" ? "block" : "none";
+                });
+
+                filterContent.innerHTML = '<strong>Filtrar por STATUS:</strong>';
+                statusValues.forEach(status => {
+                    var label = L.DomUtil.create('label', '', filterContent);
+                    var checkbox = L.DomUtil.create('input', '', label);
+                    checkbox.type = 'checkbox';
+                    checkbox.value = status.toUpperCase();
+                    checkbox.checked = true;
+                    label.appendChild(document.createTextNode(' ' + status));
+
+                    checkbox.addEventListener('change', function () {
+                        var selectedStatuses = Array.from(filterContent.querySelectorAll('input:checked'))
+                            .map(input => input.value);
+                        drawPolylines(selectedStatuses);
+                    });
+                });
+
+                return div;
+            };
+
+            control.addTo(map);
+            drawPolylines();
+        }
+
+        // Mostrar overlay de carregamento
+        document.getElementById('loading-overlay').classList.add('active');
+
+        // Processar o CSV
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                document.getElementById('loading-overlay').classList.remove('active');
+                if (!results.data || results.errors.length > 0) {
+                    alert("Erro ao processar o CSV. Verifique o arquivo.");
+                    console.error("Erros no CSV:", results.errors);
+                } else {
+                    processCSV(results.data);
+                }
+            },
+            error: function(error) {
+                document.getElementById('loading-overlay').classList.remove('active');
+                alert("Erro ao carregar o CSV: " + error.message);
+                console.error(error);
+            }
+        });
+
+        // Adicionar botão de desenho de polilinha
+        var drawControl = L.control({ position: 'topleft' });
+        drawControl.onAdd = function () {
+            var div = L.DomUtil.create('div', 'leaflet-control-layers');
+            var drawButton = L.DomUtil.create('button', 'filter-toggle-button', div);
+            drawButton.innerText = "??";
+            drawButton.title = "Desenhar Polilinha";
+            return div;
+        };
+        drawControl.addTo(map);
+
+        // Variáveis para o modo de desenho
+        var drawingMode = false;
+        var tempPolyline = null;
+        var tempPoints = [];
+        var firstClickIgnored = false; // Nova variável para controlar o primeiro clique
+
+        // Função para ativar/desativar o modo de desenho
+        function toggleDrawingMode() {
+            drawingMode = !drawingMode;
+            if (drawingMode) {
+                tempPoints = [];
+                tempPolyline = null;
+                firstClickIgnored = false; // Reseta o controle do primeiro clique
+                map.on('click', addPointToPolyline);
+            } else {
+                map.off('click', addPointToPolyline);
+                if (tempPolyline) {
+                    map.removeLayer(tempPolyline);
+                }
+                if (tempPoints.length = 1) {
+                    var coordinates = tempPoints.map(point => point.lat + ',' + point.lng).join(';');
+                    // Exibir as coordenadas em um popup
+                    L.popup()
+                        .setLatLng(initialCoordinates)
+                        .setContent("Coordenadas da polilinha")
+                        .openOn(map);
+                }
+            }
+        }
+
+        // Função para adicionar um ponto à polilinha temporária
+        function addPointToPolyline(e) {
+            if (!firstClickIgnored) {
+                firstClickIgnored = true; // Ignora o primeiro clique
+                return;
+            }
+            tempPoints.push(e.latlng);
+            if (tempPolyline) {
+                map.removeLayer(tempPolyline);
+            }
+            tempPolyline = L.polyline(tempPoints, { color: 'black', weight: 4, opacity: 0.5 }).addTo(map);
+            var coordinates = tempPoints.map(point => point.lat + ',' + point.lng).join(';');
+            // Atualizar o painel com as coordenadas
+            document.getElementById('coordinates-output').value = coordinates
+
+            // Cria pop-up 
+            if(1==0){
+                L.popup()
+                .setLatLng(initialCoordinates)
+                .setContent("Coordenadas da polilinha:<br>" + coordinates)
+                .openOn(map);
+            }
+        }
+
+        // Associar o botão de desenho à função de alternar o modo de desenho
+        document.querySelector('.leaflet-control-layers button').addEventListener('click', toggleDrawingMode);
+
+        // Função para copiar coordenadas para a área de transferência
+        function copyCoordinates() {
+            var textArea = document.getElementById('coordinates-output');
+            textArea.select();
+            document.execCommand("copy");
+        }
+
+        // Adicionar controle de legenda
+        var legendControl = L.control({ position: 'topleft' });
+        legendControl.onAdd = function () {
+            var div = L.DomUtil.create('div', 'legend-control');
+            var toggleButton = L.DomUtil.create('button', '', div);
+            toggleButton.innerText = "LEGENDA";
+            toggleButton.addEventListener('click', function () {
+                var legendContent = div.querySelector('.legend-content');
+                legendContent.style.display = legendContent.style.display === "none" ? "block" : "none";
+            });
+
+            var legendContent = L.DomUtil.create('div', 'legend-content', div);
+            legendContent.innerHTML = `
+                <div class="legend-item"><div class="legend-color" style="background-color: GREEN;"></div>EXECUTADO</div>
+                <div class="legend-item"><div class="legend-color" style="background-color: BLUE;"></div>EM ANDAMENTO</div>
+                <div class="legend-item"><div class="legend-color" style="background-color: RED;"></div>PRÓXIMO</div>
+                <div class="legend-item"><div class="legend-color" style="background-color: #C0C0C0;"></div>AGUARDANDO</div>
+            `;
+
+            return div;
+        };
+        legendControl.addTo(map);
+    </script>
+</body>
+</html>
