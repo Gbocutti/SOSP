@@ -1,849 +1,460 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <title>Mapa OpenStreetMap com Filtro de STATUS, NOME, OBSERVAÇÃO e REMESSA</title>
-    <!-- Importar o CSS do Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-    <!-- Importar o JavaScript do Leaflet -->
-    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-    <!-- Importar a biblioteca PapaParse para processamento do CSV -->
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa com OpenStreetMap e Google Sheets</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     <style>
-        /* Define a altura do mapa */
         #map {
             height: 100%;
-            margin: 0;
-        }
-        .leaflet-control-layers {
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 5px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-        .leaflet-control-layers label {
-            display: block;
-            margin: 5px 0;
-        }
-        .leaflet-control-layers input {
-            margin-right: 5px;
-        }
-        .filter-toggle-button, .legend-toggle-button, .draw-toggle-button {
-            cursor: pointer;
-            margin-bottom: 2px;
-            padding: 2px;
-            background-color: white;
-            font-size: 20px;
-            color: black;
-            border: none;
-            border-radius: 3px;
-            text-align: center;
-            transition: background-color 0.3s ease;
-        }
-        .filter-toggle-button:hover, .legend-toggle-button:hover, .draw-toggle-button:hover {
-            background-color: #0056b3;
-            color: white;
-        }
-        .filter-content, .legend-content, .draw-controls {
-            display: none;
-            margin-top: 5px;
-        }
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
             width: 100%;
-            height: 100%;
-            background-color: rgba(255, 255, 255, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            display: none;
         }
-        .loading-overlay.active {
-            display: flex;
-        }
-        .loading-text {
-            font-size: 18px;
-            color: #007BFF;
-        }
-        #password-form {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
-            z-index: 10000;
-        }
-        #password-form input {
-            margin-bottom: 10px;
-        }
-        #password-form button {
-            cursor: pointer;
-        }
-        #password-form button:disabled {
-            cursor: not-allowed;
-            opacity: 0.5;
-        }
-        #coordinate-panel {
-            position: fixed;
-            bottom: 3px;
-            left: 50px;
-            background: white;
-            padding: 1px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            width: 20%;
+        #homeButton {
+            position: absolute;
+            top: 90px;
+            left: 19px;
             z-index: 1000;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+            background-color: white;
+            border: none;
+            padding: 6px;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
-        #coordinates-output {
-            width: 100%;
-            height: 30px;
-            resize: none;
+        #homeButton img {
+            width: 20px;
+            height: 20px;
         }
-        /* Estilo para o controle de pesquisa */
-        .search-control {
+        /* Estilo da barra de pesquisa */
+        #searchBar {
             position: absolute;
             top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 40%;
+            transform: translateX(-40%);
             z-index: 1000;
-            background: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
-        }
-        .search-control input {
-            padding: 5px;
-            margin-bottom: 5px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .search-control button {
-            padding: 5px 10px;
             background-color: white;
-            color: black;
-            border: none;
-            border-radius: 3px;
+            padding: 5px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        #searchBar input {
+            width: 200px;
+            padding: 5px;
+        }
+        /* Estilo das caixas de pesquisa adicionais */
+        .searchInput {
+            margin-bottom: 10px;
+        }
+        /* Estilo do controle de filtro */
+        .leaflet-control-custom {
+            background-color: white;
+            padding: 0px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: flex; /* Usa o flexbox para centralizar */
+            align-items: center; /* Alinha verticalmente no centro */
+            //justify-content: center; /* Alinha horizontalmente no centro */
+            //text-align: center; /* Alinha o texto no centro (se houver) */
+            padding-top: 5px; /* Espaçamento interno superior */
+            padding-right: 1px; /* Espaçamento interno direito */
+            padding-left: 1px; /* Espaçamento interno esquerdo */
+        }
+
+        /* Estilo do controle de filtro TIPO */
+        .leaflet-control-custom-tipo {
+            background-color: white;
+            padding: 0px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: flex; /* Usa o flexbox para centralizar */
+            align-items: center; /* Alinha verticalmente no centro */
+            //justify-content: center; /* Alinha horizontalmente no centro */
+            //text-align: center; /* Alinha o texto no centro (se houver) */
+            padding-top: 5px; /* Espaçamento interno superior */
+            padding-right: 1px; /* Espaçamento interno direito */
+            padding-left: 1px; /* Espaçamento interno esquerdo */
+        }
+
+        .header {
             cursor: pointer;
-            margin-right: 1px;
+            margin-bottom: 10px;
         }
-        .search-control button:hover {
-            background-color: #0056b3;
-        }
-        /* Estilo para os campos de data */
-        .date-filter {
-            margin-top: 10px;
-        }
-        .date-filter label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        .date-filter input {
-            width: 100%;
-            padding: 5px;
-            margin-bottom: 5px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-        }
-        /* Estilo para a legenda */
-        .legend-control {
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 5px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            max-width: 200px;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 3px;
-        }
-        .legend-color {
-            width: 20px;
-            height: 10px;
-            margin-right: 5px;
-            display: inline-block;
-        }
-        /* Estilo para o ponto de snap */
-        .snap-point {
-            background-color: #ff0000;
-            width: 12px;
-            height: 12px;
-            border-radius: 6px;
-            border: 2px solid white;
-            position: absolute;
-            pointer-events: none;
-            z-index: 1000;
-        }
-        .draw-snap-control {
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 5px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-        /* Alteração do cursor para padrão (setinha) */
-        .leaflet-container {
-            cursor: default;
-        }
-        /* Estilo para o botão de desenho quando ativo */
-        .drawing-active {
-            background-color: #0056b3 !important;
-            color: white !important;
+        .filter-content {
+            display: none;
         }
     </style>
 </head>
 <body>
-
-    <!-- Formulário de senha -->
-    <div id="password-form">
-        <label for="password">Senha:</label>
-        <input type="password" id="password" placeholder="Digite a senha" disabled>
-        <button id="password-button" onclick="checkPassword()" disabled>Acessar</button>
-        <p id="error-message" style="color: red; display: none;">Senha incorreta!</p>
-        <p id="loading-message" style="color: blue; display: none;">Carregando senhas válidas, por favor aguarde...</p>
+    <div id="map"></div>
+    <button id="homeButton" title="Voltar para Araçatuba">
+        <img src="https://img.icons8.com/ios-glyphs/30/000000/home.png" alt="Home">
+    </button>
+    <div id="searchBar">
+        <input type="text" id="searchInput" class="searchInput" placeholder="Pesquisar por descrição...">
+        <input type="text" id="searchBairro" class="searchInput" placeholder="Pesquisar por bairro...">
+        <input type="text" id="searchSetor" class="searchInput" placeholder="Pesquisar por setor...">
+        <input type="number" id="searchQuantidade" class="searchInput" placeholder="Pesquisar por quantidade...">
     </div>
-
-    <!-- Div para o mapa -->
-    <div id="map" style="display: none;"></div>
-
-    <!-- Overlay de carregamento -->
-    <div class="loading-overlay" id="loading-overlay">
-        <span class="loading-text">Carregando dados, por favor aguarde...</span>
-    </div>
-
-    <!-- Painel de coordenadas -->
-    <div id="coordinate-panel">
-        <textarea id="coordinates-output" readonly></textarea>
-        <button onclick="copyCoordinates()">Copiar</button>
-    </div>
-
-    <!-- Controle de pesquisa com filtros para NOME, OBSERVAÇÃO e REMESSA -->
-    <div class="search-control" id="search-control" style="display:none;">
-        <button id="toggle-extra-search" class="filter-toggle-button" title="Pesquisar">🔍</button>
-        <div id="extra-search" class="filter-content">
-            <input type="text" id="search-input" placeholder="Pesquisar por nome...">
-            <input type="text" id="observacao-input" placeholder="Pesquisar por observação...">
-            <input type="text" id="remessa-input" placeholder="Pesquisar por remessa...">
-            <div class="date-filter">
-                <label for="start-date">Data Inicial:</label>
-                <input type="date" id="start-date">
-                <label for="end-date">Data Final:</label>
-                <input type="date" id="end-date">
-            </div>
-            <button id="search-button">Pesquisar</button>
-            <button id="clear-search" style="margin-left: 5px;">Limpar</button>
-        </div>
-    </div>
-
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
     <script>
-        // URL do CSV com as senhas
-        const passwordsCsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTERpcQ5NONP3R8TGHTbZ04Ckq9Bj31BCQv4SH1eXs_q1v9z-nocOi2jOJEvgE0gVBJ38rxM6KLFRNH/pub?gid=1310394031&single=true&output=csv";
-        let validPasswords = [];
+        var initialCoordinates = [-21.2076, -50.4401];
+        var initialZoom = 13;
 
-        // Mostrar mensagem de carregamento e desabilitar campos
-        document.getElementById('loading-message').style.display = 'block';
-        document.getElementById('password').disabled = true;
-        document.getElementById('password-button').disabled = true;
+        // Criando os layers de mapa base (OpenStreetMap e Satélite)
+        var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 25,
+            attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+        });
 
-        // Carregar as senhas válidas do CSV
-        function loadValidPasswords() {
-            document.getElementById('loading-overlay').classList.add('active');
-            Papa.parse(passwordsCsvUrl, {
-                download: true,
-                header: true,
-                complete: function(results) {
-                    document.getElementById('loading-overlay').classList.remove('active');
-                    if (results.data && results.data.length > 0) {
-                        // Extrai todas as senhas não vazias da coluna SENHA
-                        validPasswords = results.data
-                            .map(row => row.SENHA)
-                            .filter(password => password && password.trim() !== '');
-                        console.log("Senhas válidas carregadas:", validPasswords);
-                        
-                        // Habilitar campos de senha agora que os dados foram carregados
-                        document.getElementById('password').disabled = false;
-                        document.getElementById('password-button').disabled = false;
-                        document.getElementById('loading-message').style.display = 'none';
-                    } else {
-                        console.error("Nenhuma senha encontrada no arquivo CSV");
-                        document.getElementById('error-message').textContent = "Erro ao carregar senhas válidas!";
-                        document.getElementById('error-message').style.display = 'block';
-                        document.getElementById('loading-message').style.display = 'none';
-                    }
-                },
-                error: function(error) {
-                    document.getElementById('loading-overlay').classList.remove('active');
-                    console.error("Erro ao carregar senhas:", error);
-                    document.getElementById('error-message').textContent = "Erro ao carregar senhas válidas!";
-                    document.getElementById('error-message').style.display = 'block';
-                    document.getElementById('loading-message').style.display = 'none';
-                }
-            });
-        }
+        var cartoDBPositron = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        });
 
-        // Carregar as senhas quando a página é carregada
-        window.onload = loadValidPasswords;
+        var cartoDBDarkMatter = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        });
 
-        // Função para verificar a senha
-        function checkPassword() {
-            const password = document.getElementById('password').value;
-            if (validPasswords.includes(password)) {
-                document.getElementById('password-form').style.display = 'none';
-                document.getElementById('map').style.display = 'block';
-                document.getElementById('search-control').style.display = 'block';
-                initializeMap();
-            } else {
-                document.getElementById('error-message').style.display = 'block';
-            }
-        }
+        var stamenToner = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/USA_Topo_Maps/MapServer/tile/{z}/{y}/{x}', {
+           maxZoom: 20,
+           attribution: 'Tiles © Esri'
+        });
 
-        // Função para converter data no formato DD/MM/YYYY para objeto Date
-        function parseDate(dateString) {
-            if (!dateString || dateString.trim() === "") return null;
-            
-            // Remove espaços em branco
-            dateString = dateString.trim();
-            
-            // Tenta converter de DD/MM/YYYY
-            const parts = dateString.split('/');
-            if (parts.length === 3) {
-                // Verifica se os componentes são números válidos
-                const day = parseInt(parts[0]), month = parseInt(parts[1]), year = parseInt(parts[2]);
-                if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-                    // Cria a data no formato MM/DD/YYYY (que o Date do JavaScript espera)
-                    return new Date(year, month - 1, day);
-                }
-            }
-            
-            // Tenta converter de YYYY-MM-DD (formato date input)
-            if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                return new Date(dateString);
-            }
-            
-            // Tenta converter de qualquer outro formato que o Date possa entender
-            const parsedDate = new Date(dateString);
-            return isNaN(parsedDate.getTime()) ? null : parsedDate;
-        }
+        var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles © Esri'
+        });
 
-        // Função para adicionar o controle de legenda
-        function addLegendControl(map) {
-            var legendControl = L.control({position: 'topright'});
-            
-            legendControl.onAdd = function(map) {
-                var div = L.DomUtil.create('div', 'legend-control');
-                
-                var toggleButton = L.DomUtil.create('button', 'legend-toggle-button', div);
-                toggleButton.innerText = "🎨";
-                toggleButton.title = "Legenda de Cores";
-                
-                var legendContent = L.DomUtil.create('div', 'legend-content', div);
-                
-                // Conteúdo da legenda
-                legendContent.innerHTML = 
-                    <strong>Legenda de Status:</strong><br>
-                    <div class="legend-item"><span class="legend-color" style="background-color: green;"></span>EXECUTADA</div>
-                    <div class="legend-item"><span class="legend-color" style="background-color: red;"></span>AGUARDANDO</div>
-                    <div class="legend-item"><span class="legend-color" style="background-color: blue;"></span>FUTURO</div>
-                    <div class="legend-item"><span class="legend-color" style="background-color: orange;"></span>SMPUH (EXECUTADO)</div>
-                    <div class="legend-item"><span class="legend-color" style="background-color: black; opacity: 0.5; background-image: linear-gradient(to right, black 50%, transparent 50%); background-size: 5px 2px;"></span>ESTUDO</div>
-                    <div class="legend-item"><span class="legend-color" style="background-color: brown; opacity: 0.5;"></span>ANÁLISE</div>
-                    <div class="legend-item"><span class="legend-color" style="background-color: purple; opacity: 0.6; background-image: linear-gradient(to right, purple 50%, transparent 50%); background-size: 5px 2px;"></span>PRÓXIMO (PAV)</div>
-                    <div class="legend-item"><span class="legend-color" style="background-color: cyan; opacity: 0.5;"></span>PRÓXIMO (RECAPE)</div>
-                ;
-                
-                // Evento para mostrar/esconder a legenda
-                toggleButton.addEventListener('click', function() {
-                    legendContent.style.display = legendContent.style.display === "none" ? "block" : "none";
-                });
-                
-                return div;
-            };
-            
-            legendControl.addTo(map);
-        }
+        var esriTopographic = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 20,
+            attribution: 'Tiles © Esri & OpenStreetMap contributors'
+        });
 
-        // Função para inicializar o mapa
-        function initializeMap() {
-            // Coordenadas iniciais e zoom do mapa
-            var initialCoordinates = [-21.2076, -50.4401];
-            var initialZoom = 13;
+        var arcgisDark1 = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 35,
+            attribution: 'Tiles © Esri'
+        });
 
-            // Criando os layers de mapa base (OpenStreetMap e Satélite)
-            var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 25,
-                attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
-            });
+        var estradas = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 35,
+            attribution: 'Tiles © Esri'
+        });
 
-            var cartoDBPositron = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                maxZoom: 20,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            });
+        var map = L.map('map', {
+            center: initialCoordinates,
+            zoom: initialZoom,
+            layers: [cartoDBPositron] // Carrega o OpenStreetMap por padrão
+        });
 
-            var cartoDBDarkMatter = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                maxZoom: 20,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            });
+        // Controle para alternar as camadas de mapa, agora no canto direito inferior
+        var baseLayers = {
+            "OpenStreetMap": osmLayer,
+            "Satélite": satelliteLayer,
+            "Topografia": esriTopographic,
+            "Carto": cartoDBPositron,
+            "Escuro": cartoDBDarkMatter,
+            "Estradas": estradas
+        };
 
-            var stamenToner = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/USA_Topo_Maps/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 20,
-                attribution: 'Tiles © Esri'
-            });
+        L.control.layers(baseLayers, null, { position: 'bottomright' }).addTo(map);
 
-            var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19,
-                attribution: 'Tiles © Esri'
-            });
+        document.getElementById('homeButton').addEventListener('click', function() {
+            map.setView(initialCoordinates, initialZoom);
+        });
 
-            var esriTopographic = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 20,
-                attribution: 'Tiles © Esri & OpenStreetMap contributors'
-            });
+        // Controle de geocodificação
+        var geocoder = L.Control.geocoder({
+            defaultMarkGeocode: false
+        }).on('markgeocode', function(e) {
+            var center = e.geocode.center;
+            L.marker(center).addTo(map)
+                .bindPopup(e.geocode.name)
+                .openPopup();
+            map.setView(center, 20);
+        }).addTo(map);
 
-            var arcgisDark1 = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 35,
-                attribution: 'Tiles © Esri'
-            });
+        var markers = [];
 
-            var estradas = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 35,
-                attribution: 'Tiles © Esri'
-            });
 
-            var map = L.map('map', {
-                center: initialCoordinates,
-                zoom: initialZoom,
-                layers: [cartoDBPositron] // Camada padrão
-            });
 
-            // Adicionar controle de legenda
-            addLegendControl(map);
 
-            // Controle para alternar as camadas de mapa, no canto inferior direito
-            var baseLayers = {
-                "OpenStreetMap": osmLayer,
-                "Satélite": satelliteLayer,
-                "Topografia": esriTopographic,
-                "Carto": cartoDBPositron,
-                "Escuro": cartoDBDarkMatter,
-                "Estradas": estradas
-            };
+        var csvUrl = 'https://docs.google.com/spreadsheets/d/1c6RXoEomTXUyJcNeHl1dXnm73AR6MR0IJ4D_eqGkSbY/pub?gid=0&single=true&output=csv';
 
-            L.control.layers(baseLayers, null, { position: 'bottomright' }).addTo(map);
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                results.data.forEach(function(row) {
+                    var latitude = parseFloat(row['LATITUDE']);
+                    var longitude = parseFloat(row['LONGITUDE']);
+                    var descricao = row['DESCRIÇÃO'];
+                    var status = row['STATUS'];
+                    var dados = row['DADOS'];
+                    var bairro = row['BAIRRO'];
+                    var setor = row['SETOR'];
+                    var quantidade = row['QUANTIDADE'];
+                    var tipo = row['TIPO'];
+                    var custo = row['CUSTO'];
+                    var link= row['LINK'];
+                    var custoTotal = row['CUSTO TOTAL'];
+                    var id= row['ID'];
 
-            // URL do Google Sheets exportado como CSV
-            var csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTERpcQ5NONP3R8TGHTbZ04Ckq9Bj31BCQv4SH1eXs_q1v9z-nocOi2jOJEvgE0gVBJ38rxM6KLFRNH/pub?output=csv";
-
-            // Variáveis globais
-            var allPolylines = []; // Armazena todas as polilinhas
-            var allData = []; // Dados do CSV
-
-            // Variáveis para o sistema de snap
-            var snapMarker = L.marker([0, 0], {
-                icon: L.divIcon({
-                    className: 'snap-point',
-                    iconSize: [12, 12]
-                }),
-                interactive: false
-            }).addTo(map);
-            snapMarker.setOpacity(0);
-            
-            var snapDistance = 20; // pixels
-            var snapEnabled = true;
-            var allVertices = []; // Armazenará todos os vértices das polilinhas existentes
-
-            // Função para extrair todos os vértices das polilinhas existentes
-            function updateAllVertices() {
-                allVertices = [];
-                allPolylines.forEach(polyline => {
-                    var latlngs = polyline.getLatLngs();
-                    latlngs.forEach(latlng => {
-                        if (latlng.lat && latlng.lng) {
-                            allVertices.push(latlng);
-                        } else if (Array.isArray(latlng)) {
-                            // Para polilinhas com múltiplas partes
-                            latlng.forEach(subLatlng => {
-                                allVertices.push(subLatlng);
-                            });
-                        }
-                    });
-                });
-            }
-
-            // Função para encontrar o vértice mais próximo do ponto do mouse
-            function findClosestVertex(latlng) {
-                if (!snapEnabled || allVertices.length === 0) return null;
-                
-                var closest = null;
-                var minDistance = Infinity;
-                
-                allVertices.forEach(vertex => {
-                    var distance = map.distance(latlng, vertex);
-                    var pixelDistance = map.latLngToContainerPoint(latlng)
-                        .distanceTo(map.latLngToContainerPoint(vertex));
-                    
-                    if (pixelDistance < snapDistance && distance < minDistance) {
-                        minDistance = distance;
-                        closest = vertex;
-                    }
-                });
-                
-                return closest;
-            }
-
-            // Função para definir o estilo da polilinha com base no STATUS
-            function getStyleByStatus(status, tipo) {
-                switch (status.toUpperCase()) {
-                    case "EXECUTADA":
-                        return { color: 'green', weight: 7, opacity: 0.5 };
-                    case "AGUARDANDO":
-                        return { color: 'red', weight: 7, opacity: 0.5 };
-                    case "FUTURO":
-                        return { color: 'blue', weight: 7, opacity: 0.5 };
-                    case "SMPUH":
-                        return { color: 'orange', weight: 4, opacity: 0.3 };
-                    case "CANCELADO":
-                        return { color: 'grey', weight: 4, opacity: 0.1 };
-                    case "ESTUDO":
-                        return { color: 'black', weight: 7, opacity: 0.5, dashArray: "5, 5" };
-                    case "ANÁLISE":
-                        if(tipo === 'PAVIMENTAÇÃO'){
-                            return { color: 'brown', weight: 7, opacity: 0.6, dashArray: "5, 1" };
-                        } else {
-                            return { color: 'brown', weight: 7, opacity: 0.5 };
-                        }
-                    case "PROXIMO":
-                        if(tipo === 'PAVIMENTAÇÃO'){
-                            return { color: 'purple', weight: 7, opacity: 0.6, dashArray: "5, 1" };
-                        } else {
-                            return { color: 'cyan', weight: 7, opacity: 0.5 };
-                        }
-                    default:
-                        return { color: 'blue', weight: 7, opacity: 0.5 };
-                }
-            }
-
-            // Função para calcular o comprimento da polilinha (em metros)
-            function calculatePolylineLength(points) {
-                var length = 0;
-                for (var i = 1; i < points.length; i++) {
-                    length += map.distance(points[i - 1], points[i]);
-                }
-                return length;
-            }
-
-            // Função para desenhar as polilinhas com base nos dados e filtros
-            function drawPolylines(statusFilters = [], nameFilter = "", observacaoFilter = "", remessaFilter = "", startDate = null, endDate = null) {
-                // Remove as polilinhas existentes
-                allPolylines.forEach(polyline => map.removeLayer(polyline));
-                allPolylines = [];
-
-                // Filtrar os dados com base nos filtros:
-                var filteredData = allData.filter(row => {
-                    // Filtro por STATUS
-                    var statusMatch = (statusFilters.length === 0) || statusFilters.includes((row.STATUS || "").toUpperCase());
-                    
-                    // Filtro por NOME
-                    var nameMatch = (nameFilter === "") || (row.NOME && row.NOME.toLowerCase().includes(nameFilter.toLowerCase()));
-                    
-                    // Filtro por OBSERVAÇÃO
-                    var observacaoMatch = (observacaoFilter === "") || (row.OBSERVAÇÃO && row.OBSERVAÇÃO.toLowerCase().includes(observacaoFilter.toLowerCase()));
-                    
-                    // Filtro por REMESSA (EXEC)
-                    var remessaMatch = (remessaFilter === "") || (row.EXEC && row.EXEC.toLowerCase().includes(remessaFilter.toLowerCase()));
-                    
-                    // Filtro por DATA
-                    var dateMatch = true;
-                    if (startDate || endDate) {
-                        const rowDate = parseDate(row.DATA);
-                        console.log("Row DATA:", row.DATA, "Parsed:", rowDate);
-                        
-                        if (rowDate) {
-                            if (startDate && rowDate < startDate) {
-                                dateMatch = false;
+                    // Definir ícones baseados no status
+                    var iconColor;
+                    var sizeIcon;
+                    switch (status) {
+                        case 'INSTALADO':
+                            if(tipo === 'SELETIVA'){
+                            iconColor = 'https://i.postimg.cc/13VRV7S2/contanier-reciclavel-transparentwe.png';
+                            sizeIcon = 26;
+                            } else{ 
+                            iconColor = 'https://i.postimg.cc/mgfJVmM0/Ixon-lixo-org-removebg-preview.png';
+                            sizeIcon = 32;
                             }
-                            if (endDate && rowDate > endDate) {
-                                dateMatch = false;
-                            }
-                        } else {
-                            // Se não conseguiu parsear a data e há filtro ativo, não mostra
-                            dateMatch = !(startDate || endDate);
-                            console.log("Date parse failed, dateMatch:", dateMatch);
-                        }
+                            break;
+                        case 'ESTUDO':
+                            iconColor = 'http://maps.google.com/mapfiles/kml/paddle/orange-circle.png';
+                            sizeIcon = 22;
+                            break;
+                        case 'AUSENTE':
+                            iconColor = 'https://user-images.githubusercontent.com/1673310/171033975-680736c9-60f1-4af8-841f-65ebfb574881.gif';
+                            sizeIcon = 32;
+                            break;
+                        case 'INTRODUZIR':
+                            iconColor = 'http://maps.google.com/mapfiles/kml/paddle/blu-circle.png';
+                            sizeIcon = 32;
+                            break;
+                        case 'REMOVER':
+                            iconColor = 'http://maps.google.com/mapfiles/kml/paddle/pause-lv.png';
+                            sizeIcon = 10;
+                            break;
+                        case 'DESINSTALADO':
+                            iconColor = 'http://maps.google.com/mapfiles/kml/pal5/icon51l.png';
+                            sizeIcon = 10;
+                            break;
+                        default:
+                            iconColor = 'http://maps.google.com/mapfiles/kml/paddle/wht-circle.png';
+                            sizeIcon = 20;
                     }
-                    
-                    return statusMatch && nameMatch && observacaoMatch && remessaMatch && dateMatch;
-                });
 
-                var bounds = [];
-
-                filteredData.forEach(row => {
-                    if (row.COORDENADAS) {
-                        var polylinePoints = row.COORDENADAS.split(';').map(coord => {
-                            var latLng = coord.split(',');
-                            return latLng.length === 2 ? [parseFloat(latLng[0]), parseFloat(latLng[1])] : null;
-                        }).filter(point => point !== null);
-
-                        if (polylinePoints.length > 0) {
-                            var style = getStyleByStatus(row.STATUS || "", row.TIPO || "");
-                            var polyline = L.polyline(polylinePoints, style).addTo(map);
-                            allPolylines.push(polyline);
-
-                            var length = calculatePolylineLength(polylinePoints);
-
-                            var popupContent = 
-                                <b>NOME:</b> ${row.NOME || 'Não informado'}<br>
-                                <b>STATUS:</b> ${row.STATUS || 'Não informado'}<br>
-                                <b>TIPO:</b> ${row.TIPO || 'Não informado'}<br>
-                                <b>OBSERVAÇÃO:</b> ${row.OBS|| 'Não informado'}<br>
-                                <b>DATA:</b> ${row.DATA || 'Não informado'}<br>
-                                <b>REMESSA:</b> ${row.EXEC || 'Não informado'}<br>
-                                <b>ID:</b> ${row.ID || 'Não informado'}<br>
-                                <b>COMPRIMENTO:</b> ${(length / 1000).toFixed(2)} km;
-                            polyline.bindPopup(popupContent);
-
-                            bounds = bounds.concat(polylinePoints);
-                        }
-                    }
-                });
-
-                // Atualiza os vértices para o sistema de snap
-                updateAllVertices();
-
-                if (bounds.length > 0) {
-                    map.fitBounds(bounds);
-                }
-            }
-
-            // Função para processar o CSV e inicializar os filtros
-            function processCSV(data) {
-                allData = data;
-                var statusValues = [...new Set(data.map(row => row.STATUS).filter(status => status))];
-
-                var control = L.control({ position: 'topright' });
-                control.onAdd = function () {
-                    var div = L.DomUtil.create('div', 'leaflet-control-layers');
-
-                    var toggleButton = L.DomUtil.create('button', 'filter-toggle-button', div);
-                    toggleButton.innerText = "📌";
-
-                    var filterContent = L.DomUtil.create('div', 'filter-content', div);
-
-                    toggleButton.addEventListener('click', function () {
-                        filterContent.style.display = filterContent.style.display === "none" ? "block" : "none";
+                    var customIcon = L.icon({
+                        iconUrl: iconColor,
+                        iconSize: [sizeIcon, sizeIcon],
+                        iconAnchor: [sizeIcon / 2, sizeIcon],
+                        popupAnchor: [0, -sizeIcon]
                     });
 
-                    // Filtro por STATUS
-                    filterContent.innerHTML = '<strong>Filtrar por STATUS:</strong><br>';
-                    statusValues.forEach(status => {
-                        var label = L.DomUtil.create('label', '', filterContent);
-                        var checkbox = L.DomUtil.create('input', '', label);
-                        checkbox.type = 'checkbox';
-                        checkbox.value = status.toUpperCase();
-                        
-                        // Inicia desmarcado se for CANCELADO ou NÃO PRECISA
-                        if (status.toUpperCase() === "CANCELADO" || status.toUpperCase() === "NÃO PRECISA") {
-                            checkbox.checked = false;
-                        } else {
-                            checkbox.checked = true;
-                        }
-                        
-                        label.appendChild(document.createTextNode(' ' + status));
+                    if (!isNaN(latitude) && !isNaN(longitude)) {
+                        var popupContent = `<strong style="color: red;">${tipo}</strong><br>
+                                            <strong>Descrição:</strong> ${descricao}<br>
+                                            <strong>Status:</strong> ${status || 'Não especificado'}<br>
+                                            <strong>Dados:</strong> ${dados || 'Não especificado'}<br>
+                                            <strong>Bairro:</strong> ${bairro || 'Não especificado'}<br>
+                                            <strong>Setor:</strong> ${setor || 'Não especificado'}<br>
+                                            <strong>Custo:</strong> ${custo || 'Não especificado'}<br>
+                                            <strong>Custo Total:</strong> ${custoTotal || 'Não especificado'}<br>
+                                            <strong>ID:</strong> ${id || 'Não especificado'}<br>
+                                            <strong>Quantidade:</strong> ${quantidade || 'Não especificado'}<br>
+                                            <strong>📍 Rota:</strong> ${link ? `<a href="${link}" target="_blank">Acesse aqui</a>` : '-' }`;
+                        var marker = L.marker([latitude, longitude], { icon: customIcon }).bindPopup(popupContent);
 
-                        checkbox.addEventListener('change', function () {
-                            applyFilters();
+                        // Atribuir o status como uma propriedade ao marcador
+                        marker.status = status;
+                        marker.tipo = tipo; // Adicionado aqui
+                        markers.push(marker);
+                    }
+                });
+
+                var markerLayer = L.layerGroup(markers);
+                markerLayer.addTo(map);
+
+
+// Adicionar evento para escutar o movimento do mapa (moveend ou zoomend)
+map.on('moveend', updateVisibleMarkers);
+
+// Função para atualizar os marcadores visíveis com base nos limites do mapa
+function updateVisibleMarkers() {
+    var bounds = map.getBounds(); // Obter a área visível do mapa
+    markerLayer.clearLayers(); // Limpar marcadores atuais
+
+    // Obter os filtros
+    var descriptionFilter = document.getElementById('searchInput').value.toLowerCase();
+    var bairroFilter = document.getElementById('searchBairro').value.toLowerCase();
+    var setorFilter = document.getElementById('searchSetor').value.toLowerCase();
+    var quantidadeFilter = document.getElementById('searchQuantidade').value;
+
+    // Array para armazenar marcadores visíveis
+    var visibleMarkers = [];
+
+    // Percorrer todos os marcadores e adicionar ao array os visíveis
+    markers.forEach(function(marker) {
+        if (bounds.contains(marker.getLatLng())) {
+            // Verificar se o marcador passa pelos filtros
+            var popupContent = marker.getPopup().getContent().toLowerCase();
+            var matchesDescription = popupContent.includes(descriptionFilter);
+            var matchesBairro = popupContent.includes(bairroFilter);
+            var matchesSetor = popupContent.includes(setorFilter);
+            var matchesQuantidade = !quantidadeFilter || popupContent.includes(quantidadeFilter);
+
+            // Verificar se o status do marcador está nos statuses selecionados
+            var checkedStatuses = Array.from(document.querySelectorAll('.filter-content input[type="checkbox"]:checked'))
+                .map(function(checkbox) {
+                    return checkbox.value;
+                });
+            var matchesStatus = checkedStatuses.includes(marker.status) || checkedStatuses.length === 0;
+
+
+            // Verificar se o status do marcador está nos statusesTipo selecionados
+            var checkedStatusesTipo = Array.from(document.querySelectorAll('.filter-content input[type="checkbox"]:checked'))
+                .map(function(checkbox) {
+                    return checkbox.value;
+                });
+            var matchesStatusTipo = checkedStatusesTipo.includes(marker.tipo) || checkedStatusesTipo.length === 0;
+
+            if (matchesDescription && matchesBairro && matchesSetor && matchesQuantidade && matchesStatus  && matchesStatusTipo) {
+                visibleMarkers.push(marker);
+            }
+        }
+    });
+
+    // Limitar a 200 marcadores
+    var markersToDisplay = visibleMarkers.slice(0, 200);
+
+    // Adicionar ao mapa apenas os marcadores limitados
+    markersToDisplay.forEach(function(marker) {
+        markerLayer.addLayer(marker);
+    });
+}
+
+// Atualiza os marcadores visíveis inicialmente
+updateVisibleMarkers();
+
+
+                function filterMarkers() {
+                    var descriptionFilter = document.getElementById('searchInput').value.toLowerCase();
+                    var bairroFilter = document.getElementById('searchBairro').value.toLowerCase();
+                    var setorFilter = document.getElementById('searchSetor').value.toLowerCase();
+                    var quantidadeFilter = document.getElementById('searchQuantidade').value;
+
+                    // Obtém os statuses selecionados no controle de filtro
+                    var checkedStatuses = Array.from(document.querySelectorAll('.filter-content input[type="checkbox"]:checked'))
+                        .map(function(checkbox) {
+                            return checkbox.value;
                         });
+
+                    // Obtém os statusesTipo selecionados no controle de filtro
+                    var checkedStatusesTipo = Array.from(document.querySelectorAll('.filter-content input[type="checkbox"]:checked'))
+                        .map(function(checkbox) {
+                            return checkbox.value;
+                        });
+
+
+                    markerLayer.clearLayers();
+
+                    markers.forEach(function(marker) {
+                        var popupContent = marker.getPopup().getContent().toLowerCase();
+                        var matchesDescription = popupContent.includes(descriptionFilter);
+                        var matchesBairro = popupContent.includes(bairroFilter);
+                        var matchesSetor = popupContent.includes(setorFilter);
+                        var matchesQuantidade = !quantidadeFilter || popupContent.includes(quantidadeFilter);
+
+                        // Verifica se o status do marcador está nos statuses selecionados
+                        var matchesStatus = checkedStatuses.includes(marker.status);
+
+                        // Verifica se o status do marcador está nos statusesTipo selecionados
+                        var matchesStatusTipo = checkedStatusesTipo.includes(marker.tipo);
+
+                        if (matchesDescription && matchesBairro && matchesSetor && matchesQuantidade && matchesStatus  && matchesStatusTipo) {
+                            markerLayer.addLayer(marker);
+                        }
                     });
-                    return div;
-                };
+                }
 
-                control.addTo(map);
-
-// Aplicar filtro inicial (excluindo CANCELADO e NÃO PRECISA)
-var initialFilters = statusValues
-    .filter(status => status.toUpperCase() !== "CANCELADO" && status.toUpperCase() !== "NÃO PRECISA")
-    .map(status => status.toUpperCase());
-
-drawPolylines(initialFilters);
-
+                // Atualiza a exibição dos marcadores quando os campos de pesquisa são alterados
+                document.getElementById('searchInput').addEventListener('input', filterMarkers);
+                document.getElementById('searchBairro').addEventListener('input', filterMarkers);
+                document.getElementById('searchSetor').addEventListener('input', filterMarkers);
+                document.getElementById('searchQuantidade').addEventListener('input', filterMarkers);
+                document.querySelectorAll('.filter-content input[type="checkbox"]').forEach(function(checkbox) {
+                    checkbox.addEventListener('change', filterMarkers);
+                });
             }
+        });
 
-            // Função para aplicar todos os filtros
-            function applyFilters() {
-                // Filtros de STATUS
-                var selectedStatuses = [];
-                var statusCheckboxes = document.querySelectorAll('.leaflet-control-layers .filter-content input[type="checkbox"]');
-                statusCheckboxes.forEach(checkbox => {
-                    if (checkbox.checked) {
-                        selectedStatuses.push(checkbox.value);
-                    }
+        // Criando o controle de filtro de STATUS
+        var StatusFilterControl = L.Control.extend({
+            options: {
+                position: 'topright'
+            },
+            onAdd: function (map) {
+                var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+                var header = L.DomUtil.create('div', 'header', container);
+                header.innerHTML = "<strong>Status</strong>";
+                
+                var filterContent = L.DomUtil.create('div', 'filter-content', container);
+                filterContent.innerHTML = `
+                    <label><input type="checkbox" value="INSTALADO" checked> INSTALADO</label><br>
+                    <label><input type="checkbox" value="ESTUDO" > ESTUDO</label><br>
+                    <label><input type="checkbox" value="AUSENTE" checked> AUSENTE</label><br>
+                    <label><input type="checkbox" value="INTRODUZIR" checked> INTRODUZIR</label><br>
+                    <label><input type="checkbox" value="REMOVER" checked> REMOVER</label><br>
+                    <label><input type="checkbox" value="DESINSTALADO" checked> DESINSTALADO</label><br>
+                    <label><input type="checkbox" value="NULO" checked> STATUS NULO</label>
+                `;
+                
+                filterContent.style.display = 'none';
+                
+                header.addEventListener('click', function() {
+                    filterContent.style.display = filterContent.style.display === 'none' ? 'block' : 'none';
                 });
                 
-                // Filtros de NOME, OBSERVAÇÃO e REMESSA
-                var nameFilter = document.getElementById('search-input').value;
-                var observacaoFilter = document.getElementById('observacao-input').value;
-                var remessaFilter = document.getElementById('remessa-input').value;
-                
-                // Filtros de DATA
-                var startDateInput = document.getElementById('start-date').value;
-                var endDateInput = document.getElementById('end-date').value
-                
-                console.log("Start date input:", startDateInput);
-                console.log("End date input:", endDateInput);
-                
-                var startDate = startDateInput ? new Date(startDateInput) : null;
-                var endDate = endDateInput ? new Date(endDateInput) : null;
-                
-                console.log("Parsed start date:", startDate);
-                console.log("Parsed end date:", endDate);
-                
-                // Se endDate foi definido, ajusta para o final do dia
-                if (endDate) {
-                    endDate.setHours(23, 59, 59, 999);
-                }
-                
-                drawPolylines(selectedStatuses, nameFilter, observacaoFilter, remessaFilter, startDate, endDate);
+                L.DomEvent.disableClickPropagation(container);
+                return container;
             }
+        });
 
-            // Lógica para o controle de pesquisa (NOME, OBSERVAÇÃO e REMESSA)
-            document.getElementById('toggle-extra-search').addEventListener('click', function() {
-                var extraSearch = document.getElementById('extra-search');
-                extraSearch.style.display = (extraSearch.style.display === "none" || extraSearch.style.display === "") ? "block" : "none";
-            });
+        // Adiciona o controle de filtro ao mapa
+        map.addControl(new StatusFilterControl());
 
-            document.getElementById('search-button').addEventListener('click', function() {
-                applyFilters();
-            });
 
-            document.getElementById('clear-search').addEventListener('click', function() {
-                document.getElementById('search-input').value = "";
-                document.getElementById('observacao-input').value = "";
-                document.getElementById('remessa-input').value = "";
-                document.getElementById('start-date').value = "";
-                document.getElementById('end-date').value = "";
-                applyFilters();
-            });
-
-            // Processar o CSV
-            document.getElementById('loading-overlay').classList.add('active');
-            Papa.parse(csvUrl, {
-                download: true,
-                header: true,
-                complete: function(results) {
-                    document.getElementById('loading-overlay').classList.remove('active');
-                    if (!results.data || results.errors.length > 0) {
-                        alert("Erro ao processar o CSV. Verifique o arquivo.");
-                        console.error("Erros no CSV:", results.errors);
-                    } else {
-                        processCSV(results.data);
-                    }
-                },
-                error: function(error) {
-                    document.getElementById('loading-overlay').classList.remove('active');
-                    alert("Erro ao carregar o CSV: " + error.message);
-                    console.error(error);
-                }
-            });
-
-            // Adicionar botão de desenho de polilinha
-            var drawControl = L.control({ position: 'topleft' });
-            drawControl.onAdd = function () {
-                var div = L.DomUtil.create('div', 'leaflet-control-layers');
-                var drawButton = L.DomUtil.create('button', 'filter-toggle-button draw-toggle-button', div);
-                drawButton.innerText = "✏️";
-                drawButton.title = "Desenhar Polilinha";
-                return div;
-            };
-            drawControl.addTo(map);
-
-            // Variáveis e funções para o modo de desenho
-            var drawingMode = false;
-            var tempPolyline = null;
-            var tempPoints = [];
-            var firstClickIgnored = false; // Controla o primeiro clique
-
-            function toggleDrawingMode() {
-                drawingMode = !drawingMode;
-                var drawButton = document.querySelector('.draw-toggle-button');
+        // Criando o controle de filtro de TIPO
+        var TipoFilterControl = L.Control.extend({
+            options: {
+                position: 'topright'
+            },
+            onAdd: function (map) {
+                var container2 = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom-tipo');
+                var header = L.DomUtil.create('div', 'header', container2);
+                header.innerHTML = "<strong>Tipo</strong>";
                 
-                if (drawingMode) {
-                    // Ativa o modo de desenho
-                    drawButton.classList.add('drawing-active');
-                    tempPoints = [];
-                    tempPolyline = null;
-                    firstClickIgnored = false;
-                    map.on('click', addPointToPolyline);
-                } else {
-                    // Desativa o modo de desenho
-                    drawButton.classList.remove('drawing-active');
-                    map.off('click', addPointToPolyline);
-                    if (tempPolyline) {
-                        map.removeLayer(tempPolyline);
-                    }
-                    if (tempPoints.length === 1) {
-                        var coordinates = tempPoints.map(point => point.lat + ',' + point.lng).join(';');
-                        L.popup()
-                            .setContent("Coordenadas da polilinha")
-                            .openOn(map);
-                    }
-                }
+                var filterContent = L.DomUtil.create('div', 'filter-content', container2);
+                filterContent.innerHTML = `
+                    <label><input type="checkbox" value="DOMICILIAR" checked> DOMICILIAR</label><br>
+                    <label><input type="checkbox" value="SELETIVA" checked> SELETIVA</label><br>
+                    <label><input type="checkbox" value="NULO" checked> STATUS NULO</label>
+                `;
+                
+                filterContent.style.display = 'none';
+                
+                header.addEventListener('click', function() {
+                    filterContent.style.display = filterContent.style.display === 'none' ? 'block' : 'none';
+                });
+                
+                L.DomEvent.disableClickPropagation(container2);
+                return container2;
             }
+        });
 
-            function addPointToPolyline(e) {
-                if (!firstClickIgnored) {
-                    firstClickIgnored = true;
-                    return;
-                }
-                
-                // Verifica se há um vértice próximo para snap
-                var snappedPoint = findClosestVertex(e.latlng);
-                var finalPoint = snappedPoint || e.latlng;
-                
-                tempPoints.push(finalPoint);
-                if (tempPolyline) {
-                    map.removeLayer(tempPolyline);
-                }
-                tempPolyline = L.polyline(tempPoints, { color: 'black', weight: 4, opacity: 0.5 }).addTo(map);
-                
-                var coordinates = tempPoints.map(point => point.lat + ',' + point.lng).join(';');
-                document.getElementById('coordinates-output').value = coordinates;
-            }
+        // Adiciona o controle de filtro ao mapa
+        map.addControl(new TipoFilterControl());
 
-            // Atualiza a posição do marcador de snap durante o movimento do mouse
-            map.on('mousemove', function(e) {
-                if (!drawingMode || !snapEnabled) {
-                    snapMarker.setOpacity(0);
-                    return;
-                }
-                
-                var closestVertex = findClosestVertex(e.latlng);
-                if (closestVertex) {
-                    snapMarker.setLatLng(closestVertex);
-                    snapMarker.setOpacity(1);
-                } else {
-                    snapMarker.setOpacity(0);
-                }
-            });
 
-            // Associar o botão de desenho à função de alternar o modo de desenho
-            document.querySelector('.leaflet-control-layers .draw-toggle-button').addEventListener('click', toggleDrawingMode);
 
-            // Função para copiar as coordenadas para a área de transferência
-            function copyCoordinates() {
-                var textArea = document.getElementById('coordinates-output');
-                textArea.select();
-                document.execCommand("copy");
-            }
-            window.copyCoordinates = copyCoordinates;
-        }
     </script>
 </body>
 </html>
